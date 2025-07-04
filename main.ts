@@ -44,43 +44,47 @@ const socketClient = new SocketModeClient({ appToken: Deno.env.get("SOCKET_TOKEN
 
 const messages: { [key: string]: string } = {}
 
-const recievedEvents: string[] = []
-
 socketClient.on("reaction_added", async (ev) => {
     const event = ev.event as ReactionAddedEvent
-    if (recievedEvents.includes(event.event_ts)) {
+    // console.log(event)
+    if (ev.retry_num) {
         return
     }
-    recievedEvents.push(event.event_ts)
-    setTimeout(() => {
-        recievedEvents.splice(recievedEvents.indexOf(event.event_ts), 1)
-    }, 120000)
     if (event.item.type == "message") {
         if (event.item.channel == channelId) {
             if (event.user == Deno.env.get("RTM_BOT_ID")!) {
-                if (event.reaction == "white_check_mark") {
+                // deno-lint-ignore no-inner-declarations
+                async function handle() {
                     const ts = event.item.ts
                     const text = messages[ts]!
-                    if (text && !isNaN(parseInt(text)) && Math.abs(parseInt(text)) < 100) {
+                    if (event.reaction == "white_check_mark") {
+                        if (text && !isNaN(parseInt(text)) && Math.abs(parseInt(text)) < 100) {
+                            data.push(parseInt(text))
+                            console.log(parseInt(text))
+                            delete messages[ts]
+                        } else {
+                            console.log(text, !isNaN(parseInt(text)), Math.abs(parseInt(text)))
+                        }
+                    }
+                    if (event.reaction == "tada" && data.length > 0) {
+                        console.log("Game end")
                         data.push(parseInt(text))
-                        console.log(parseInt(text))
-                        delete messages[ts]
+                        await sendGraph(getGraph(data))
+                        data = []
+                        console.log("Game end message sent")
                     }
                 }
-                if (event.reaction == "tada" && data.length > 0) {
-                    const ts = event.item.ts
-                    const text = messages[ts]!
-                    console.log("Game end")
-                    data.push(parseInt(text))
-                    await sendGraph(getGraph(data))
-                    data = []
-                    console.log("Game end message sent")
+                if (event.item.ts in messages) {
+                    handle()
+                } else {
+                    setTimeout(handle, 5000)
                 }
             }
         }
     }
 })
 socketClient.on("message", (ev) => {
+    if (ev.retry_num) return
     const event = ev.event
     messages[event.ts] = event.text
     setTimeout(() => {
@@ -91,20 +95,21 @@ socketClient.on("message", (ev) => {
 })
 await socketClient.start()
 
-// client.chat.postEphemeral({
-//     user: Deno.env.get("ALERT_USER_ID")!,
-//     attachments: [],
-//     channel: channelId,
-//     blocks: [
-//         {
-//             type: "section",
-//             text: {
-//                 type: "mrkdwn",
-//                 text: `\`Bot started\``,
-//             },
-//         },
-//     ],
-// })
+client.chat.postEphemeral({
+    user: Deno.env.get("ALERT_USER_ID")!,
+    attachments: [],
+    channel: channelId,
+    text: "Bot started",
+    blocks: [
+        {
+            type: "section",
+            text: {
+                type: "mrkdwn",
+                text: `\`Bot started\``,
+            },
+        },
+    ],
+})
 
 async function sendGraph(buffer: Uint8Array) {
     const uploadResponse = await client.files.getUploadURLExternal({ filename: "graph.png", length: buffer.byteLength, alt_text: "Graph of up vs. down game" })
