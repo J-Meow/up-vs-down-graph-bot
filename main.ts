@@ -6,9 +6,9 @@ function getGraph(data: number[]) {
     const canvas = createCanvas(1600, 900)
     const ctx = canvas.getContext("2d")
 
-    ctx.fillStyle = "#f002"
+    ctx.fillStyle = "#f88"
     ctx.fillRect(0, 0, canvas.width, canvas.height / 2)
-    ctx.fillStyle = "#00f2"
+    ctx.fillStyle = "#88f"
     ctx.fillRect(0, canvas.height / 2, canvas.width, canvas.height / 2)
 
     ctx.strokeStyle = "#555"
@@ -19,9 +19,9 @@ function getGraph(data: number[]) {
     ctx.stroke()
 
     ctx.strokeStyle = "#000"
-    ctx.lineWidth = 5
+    ctx.lineWidth = 10
     ctx.beginPath()
-    ctx.moveTo(-5, canvas.height / 2)
+    ctx.moveTo(-10, canvas.height / 2)
     for (let i = 0; i < data.length; i++) {
         const point = data[i]
         ctx.lineTo((canvas.width / (data.length - 1)) * i, canvas.height / 2 - point * (canvas.height / 200))
