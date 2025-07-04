@@ -3,7 +3,7 @@ import { SocketModeClient } from "npm:@slack/socket-mode"
 import "jsr:@std/dotenv/load"
 import { createCanvas } from "https://deno.land/x/canvas/mod.ts"
 
-let data = []
+let data: number[] = []
 
 function getGraph(data: number[]) {
     const canvas = createCanvas(1600, 900)
@@ -55,6 +55,17 @@ socketClient.on("reaction_added", async (ev) => {
                     const msg = histRes.messages![0]!
                     data.push(parseInt(msg.text!))
                     console.log(parseInt(msg.text!))
+                }
+                if (event.reaction == "tada") {
+                    const ts = event.item.ts
+                    const histRes = await client.conversations.history({ channel: channelId, inclusive: true, oldest: ts, latest: ts, limit: 1 })
+                    if (!histRes.ok || !histRes.messages?.length) {
+                        return console.error("Error", histRes.error)
+                    }
+                    console.log("Game end")
+                    await sendGraph(getGraph(data))
+                    data = []
+                    console.log("Game end message sent")
                 }
             }
         }
