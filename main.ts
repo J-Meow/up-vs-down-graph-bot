@@ -32,7 +32,7 @@ function getGraph(data: number[]) {
 }
 
 const client = new WebClient(Deno.env.get("OAUTH_TOKEN"), {
-    logLevel: LogLevel.DEBUG,
+    logLevel: LogLevel.INFO,
 })
 
 const channelId = Deno.env.get("SLACK_CHANNEL_ID")!
