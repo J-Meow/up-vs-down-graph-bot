@@ -41,28 +41,37 @@ const client = new WebClient(Deno.env.get("OAUTH_TOKEN"), {
 const channelId = Deno.env.get("SLACK_CHANNEL_ID")!
 
 const socketClient = new SocketModeClient({ appToken: Deno.env.get("SOCKET_TOKEN")!, logLevel: LogLevel.INFO })
+
+const messages: { [key: string]: string } = {}
+
+const recievedEvents: string[] = []
+
 socketClient.on("reaction_added", async (ev) => {
     const event = ev.event as ReactionAddedEvent
+    if (recievedEvents.includes(event.event_ts)) {
+        return
+    }
+    recievedEvents.push(event.event_ts)
+    setTimeout(() => {
+        recievedEvents.splice(recievedEvents.indexOf(event.event_ts), 1)
+    }, 120000)
     if (event.item.type == "message") {
         if (event.item.channel == channelId) {
             if (event.user == Deno.env.get("RTM_BOT_ID")!) {
                 if (event.reaction == "white_check_mark") {
                     const ts = event.item.ts
-                    const histRes = await client.conversations.history({ channel: channelId, inclusive: true, oldest: ts, latest: ts, limit: 1 })
-                    if (!histRes.ok || !histRes.messages?.length) {
-                        return console.error("Error", histRes.error)
+                    const text = messages[ts]!
+                    if (text && !isNaN(parseInt(text)) && Math.abs(parseInt(text)) < 100) {
+                        data.push(parseInt(text))
+                        console.log(parseInt(text))
+                        delete messages[ts]
                     }
-                    const msg = histRes.messages![0]!
-                    data.push(parseInt(msg.text!))
-                    console.log(parseInt(msg.text!))
                 }
-                if (event.reaction == "tada") {
+                if (event.reaction == "tada" && data.length > 0) {
                     const ts = event.item.ts
-                    const histRes = await client.conversations.history({ channel: channelId, inclusive: true, oldest: ts, latest: ts, limit: 1 })
-                    if (!histRes.ok || !histRes.messages?.length) {
-                        return console.error("Error", histRes.error)
-                    }
+                    const text = messages[ts]!
                     console.log("Game end")
+                    data.push(parseInt(text))
                     await sendGraph(getGraph(data))
                     data = []
                     console.log("Game end message sent")
@@ -70,6 +79,15 @@ socketClient.on("reaction_added", async (ev) => {
             }
         }
     }
+})
+socketClient.on("message", (ev) => {
+    const event = ev.event
+    messages[event.ts] = event.text
+    setTimeout(() => {
+        if (event.ts in messages) {
+            delete messages[event.ts]
+        }
+    }, 60000)
 })
 await socketClient.start()
 
@@ -90,7 +108,6 @@ await socketClient.start()
 
 async function sendGraph(buffer: Uint8Array) {
     const uploadResponse = await client.files.getUploadURLExternal({ filename: "graph.png", length: buffer.byteLength, alt_text: "Graph of up vs. down game" })
-    console.log(uploadResponse)
     if (!uploadResponse.ok) {
         console.error(uploadResponse.error)
     }
