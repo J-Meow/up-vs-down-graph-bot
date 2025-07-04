@@ -1,6 +1,9 @@
-import { LogLevel, WebClient } from "npm:@slack/web-api"
+import { LogLevel, ReactionAddedEvent, WebClient } from "npm:@slack/web-api"
+import { SocketModeClient } from "npm:@slack/socket-mode"
 import "jsr:@std/dotenv/load"
 import { createCanvas } from "https://deno.land/x/canvas/mod.ts"
+
+let data = []
 
 function getGraph(data: number[]) {
     const canvas = createCanvas(1600, 900)
@@ -36,6 +39,28 @@ const client = new WebClient(Deno.env.get("OAUTH_TOKEN"), {
 })
 
 const channelId = Deno.env.get("SLACK_CHANNEL_ID")!
+
+const socketClient = new SocketModeClient({ appToken: Deno.env.get("SOCKET_TOKEN")!, logLevel: LogLevel.INFO })
+socketClient.on("reaction_added", async (ev) => {
+    const event = ev.event as ReactionAddedEvent
+    if (event.item.type == "message") {
+        if (event.item.channel == channelId) {
+            if (event.user == Deno.env.get("RTM_BOT_ID")!) {
+                if (event.reaction == "white_check_mark") {
+                    const ts = event.item.ts
+                    const histRes = await client.conversations.history({ channel: channelId, inclusive: true, oldest: ts, latest: ts, limit: 1 })
+                    if (!histRes.ok || !histRes.messages?.length) {
+                        return console.error("Error", histRes.error)
+                    }
+                    const msg = histRes.messages![0]!
+                    data.push(parseInt(msg.text!))
+                    console.log(parseInt(msg.text!))
+                }
+            }
+        }
+    }
+})
+await socketClient.start()
 
 // client.chat.postEphemeral({
 //     user: Deno.env.get("ALERT_USER_ID")!,
