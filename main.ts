@@ -78,11 +78,11 @@ async function sendGraph(buffer: Uint8Array) {
 function startSocket() {
     const socket = new WebSocket(Deno.env.get("EVENTS_WS_URL")!)
 
-    socket.addEventListener("open", () => {
+    socket.onopen = () => {
         console.log(socket.readyState)
-    })
+    }
 
-    socket.addEventListener("message", async (event) => {
+    socket.onmessage = async (event) => {
         console.log(event.data)
         const json = JSON.parse(event.data)
         if (json.type == "count" || json.type == "screwed-up") {
@@ -92,17 +92,21 @@ function startSocket() {
             await sendGraph(getGraph(data))
             data = []
         }
-    })
+    }
     const interval = setInterval(() => {
         socket.send(new Uint8Array([0]))
     }, 10000)
 
     socket.addEventListener("close", () => {
         clearInterval(interval)
+        socket.onmessage = () => {}
+        socket.onopen = () => {}
         startSocket()
     })
     socket.addEventListener("error", () => {
         clearInterval(interval)
+        socket.onmessage = () => {}
+        socket.onopen = () => {}
         startSocket()
     })
 }
