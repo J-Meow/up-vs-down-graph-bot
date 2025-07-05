@@ -6,6 +6,7 @@ let data: number[] = []
 let mistakes = 0
 let upParticipated = false
 let downParticipated = false
+let lastUser = ""
 
 function getGraph(data: number[]) {
     const canvas = createCanvas(1600, 900)
@@ -100,6 +101,7 @@ function startSocket() {
     socket.onmessage = async (event) => {
         console.log(event.data)
         const json = JSON.parse(event.data)
+        if (json.user == lastUser) return
         if (json["user-team"] == "UP") {
             upParticipated = true
         }
@@ -112,12 +114,14 @@ function startSocket() {
         if (json.type == "screwed-up") {
             mistakes++
         }
+        lastUser = json.user
         if (json.type == "win") {
             await sendGraph(getGraph(data))
             data = []
             mistakes = 0
             upParticipated = false
             downParticipated = false
+            lastUser = ""
         }
     }
     const interval = setInterval(() => {
