@@ -99,9 +99,9 @@ function startSocket() {
     }
 
     socket.onmessage = async (event) => {
-        console.log(event.data)
         const json = JSON.parse(event.data)
         if (json.user == lastUser) return
+        console.log(event.data)
         if (json["user-team"] == "UP") {
             upParticipated = true
         }
