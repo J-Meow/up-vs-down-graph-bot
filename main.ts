@@ -101,12 +101,14 @@ function startSocket() {
         clearInterval(interval)
         socket.onmessage = () => {}
         socket.onopen = () => {}
+        socket.close()
         startSocket()
     })
     socket.addEventListener("error", () => {
         clearInterval(interval)
         socket.onmessage = () => {}
         socket.onopen = () => {}
+        socket.close()
         startSocket()
     })
 }
