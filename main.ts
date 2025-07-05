@@ -3,6 +3,9 @@ import "jsr:@std/dotenv/load"
 import { createCanvas } from "https://deno.land/x/canvas/mod.ts"
 
 let data: number[] = []
+let mistakes = 0
+let upParticipated = false
+let downParticipated = false
 
 function getGraph(data: number[]) {
     const canvas = createCanvas(1600, 900)
@@ -69,7 +72,19 @@ async function sendGraph(buffer: Uint8Array) {
     const completeUploadResponse = await client.files.completeUploadExternal({
         files: [{ id: fileId, title: "Graph" }],
         channel_id: channelId,
-        blocks: [{ type: "section", text: { type: "mrkdwn", text: `*Good job, everyone!* Here's a graph of the game.` } }],
+        blocks: [
+            {
+                type: "section",
+                text: {
+                    type: "mrkdwn",
+                    text: `*Good job, everyone!* ${
+                        Math.abs(data[0]) <= 1
+                            ? "Here's a graph of the game." + (upParticipated && !downParticipated ? " Wow, only Team Up participated in that game." : "") + (downParticipated && !upParticipated ? " Wow, only Team Down participated in that game." : "") + (mistakes ? "" : " And congratulations, you made no mistakes!")
+                            : `I missed the beginning of this game, but here's a graph starting from ${data[0]}.`
+                    }`,
+                },
+            },
+        ],
     })
     if (!completeUploadResponse.ok) {
         console.error(completeUploadResponse.error)
@@ -85,12 +100,24 @@ function startSocket() {
     socket.onmessage = async (event) => {
         console.log(event.data)
         const json = JSON.parse(event.data)
+        if (json["user-team"] == "UP") {
+            upParticipated = true
+        }
+        if (json["user-team"] == "DOWN") {
+            downParticipated = true
+        }
         if (json.type == "count" || json.type == "screwed-up") {
             data.push(json.resultingCount)
+        }
+        if (json.type == "screwed-up") {
+            mistakes++
         }
         if (json.type == "win") {
             await sendGraph(getGraph(data))
             data = []
+            mistakes = 0
+            upParticipated = false
+            downParticipated = false
         }
     }
     const interval = setInterval(() => {
