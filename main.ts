@@ -109,13 +109,15 @@ function startSocket() {
             downParticipated = true
         }
         if (json.type == "count" || json.type == "screwed-up") {
-            data.push(json.resultingCount)
+            if (Math.abs(json.resultingCount) < 100) {
+                data.push(json.resultingCount)
+            }
         }
         if (json.type == "screwed-up") {
             mistakes++
         }
         lastUser = json.user
-        if (json.type == "win") {
+        if (json.type == "win" || Math.abs(json.resultingCount) >= 100) {
             await sendGraph(getGraph(data))
             data = []
             mistakes = 0
