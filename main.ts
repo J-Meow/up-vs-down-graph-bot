@@ -127,6 +127,7 @@ function startSocket() {
         }
     }
     const interval = setInterval(() => {
+        if (socket.readyState !== socket.OPEN) return
         socket.send(new Uint8Array([0]))
     }, 10000)
 
